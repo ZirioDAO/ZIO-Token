@@ -27,11 +27,20 @@ contract DeliveryContract {
         bool _isEtherPayment,
         IERC20 _token
     ) public payable {
-        require(_isEtherPayment || msg.value == 0, "Ether sent for token payment");
-        require(!_isEtherPayment || msg.value == _paymentAmount, "Incorrect ether sent");
+        require(
+            _isEtherPayment || msg.value == 0,
+            "Ether sent for token payment"
+        );
+        require(
+            !_isEtherPayment || msg.value == _paymentAmount,
+            "Incorrect ether sent"
+        );
 
         if (!_isEtherPayment) {
-            require(_token.balanceOf(msg.sender) >= _paymentAmount, "Insufficient token balance");
+            require(
+                _token.balanceOf(msg.sender) >= _paymentAmount,
+                "Insufficient token balance"
+            );
             _token.transferFrom(msg.sender, address(this), _paymentAmount);
         }
 
@@ -59,7 +68,10 @@ contract DeliveryContract {
 
     function confirmDelivery(uint256 _packageId) public {
         Package storage p = packages[_packageId];
-        require(msg.sender == p.customer || msg.sender == p.driver, "Only customer or driver can confirm delivery");
+        require(
+            msg.sender == p.customer || msg.sender == p.driver,
+            "Only customer or driver can confirm delivery"
+        );
         require(!p.isDelivered, "Package already delivered");
 
         p.isDelivered = true;
