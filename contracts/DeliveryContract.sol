@@ -91,22 +91,28 @@ contract DeliveryContract {
         package.driver = msg.sender;
     }
 
-    function confirmDelivery(uint256 _packageId) public {
-        Package storage p = s_packagesMap[_packageId];
-        if (msg.sender != p.requester && msg.sender != p.driver) {
+    function signOffDelivery(uint256 _packageId) public {
+        Package storage package = s_packagesMap[_packageId];
+        if (msg.sender != package.requester && msg.sender != package.driver) {
             revert DeliveryContract__NotAllowedToSignOffPackage();
         }
 
-        if (p.requesterSignedOff && p.driverSignedOff) {
+        if (package.requesterSignedOff && package.driverSignedOff) {
             revert DeliveryContract__PackageAlreadyDelivered();
         }
 
-        if (msg.sender == p.requester) {}
+        if (msg.sender == package.requester) {
+            package.requesterSignedOff = true;
+        }
 
-        if (msg.sender == p.driver) {}
+        if (msg.sender == package.driver) {
+            package.driverSignedOff = true;
+        }
 
-        if (p.requesterSignedOff && p.driverSignedOff) {
-            (bool sent, ) = p.driver.call{value: p.paymentAmount}("");
+        if (package.requesterSignedOff && package.driverSignedOff) {
+            (bool sent, ) = package.driver.call{value: package.paymentAmount}(
+                ""
+            );
             require(sent, "Failed to send Ether");
         }
     }
