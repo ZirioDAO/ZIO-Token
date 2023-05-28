@@ -11,7 +11,8 @@
     "lint": "yarn solhint 'contracts/**/*.sol'",
     "lint:fix": "yarn solhint 'contracts/**/*.sol' --fix",
     "format": "yarn prettier --write .",
-    "coverage": "yarn hardhat coverage"
+    "coverage": "yarn hardhat coverage",
+    "node": "yarn hardhat node"
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.4.7",

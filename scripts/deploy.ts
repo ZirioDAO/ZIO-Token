@@ -6,7 +6,7 @@ async function main() {
 
   await deliveryContract.deployed();
 
-  console.log(`Contract deployed to ${deliveryContract.address}`);
+  console.log(`Delivery Contract deployed to ${deliveryContract.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

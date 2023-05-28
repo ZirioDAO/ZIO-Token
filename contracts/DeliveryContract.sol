@@ -1,85 +1,132 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+error DeliveryContract__NotEnoughETHEntered();
+error DeliveryContract__DriverNotRegistered();
+error DeliveryContract__PackageAlreadyAsigned();
+error DeliveryContract__NotAllowedToSignOffPackage();
+error DeliveryContract__PackageAlreadyDelivered();
 
 contract DeliveryContract {
-    struct Package {
-        address customer;
-        address driver;
-        uint256 paymentAmount;
-        string addressA;
-        string addressB;
-        string notes;
-        bool isDelivered;
-        bool isEtherPayment;
-        IERC20 token; // If isEtherPayment is false, this will be the ERC20 token used for payment.
+    /* type declarations */
+    struct Location {
+        string longitude;
+        string latitude;
+        string detail;
     }
 
-    uint256 public packageId = 0;
-    mapping(uint256 => Package) public packages;
+    struct Package {
+        address requester;
+        address driver;
+        uint256 paymentAmount;
+        string locationFrom;
+        string locationTo;
+        string notes;
+        bool requesterSignedOff;
+        bool driverSignedOff;
+    }
+
+    /* state variables */
+    uint256 private s_minimumPayment;
+    uint256 private s_nextPackageId;
+    mapping(address => bool) private s_registeredDrivers;
+    mapping(uint256 => Package) private s_packagesMap;
+
+    /* Functions */
+    constructor() {
+        s_minimumPayment = 1e15; // 0.001, hardcoded min value for now, allow contract owner to change in the future
+        s_nextPackageId = 1;
+    }
+
+    receive() external payable {
+        // ...
+    }
+
+    fallback() external {
+        // ...
+    }
+
+    /**
+     * register after driver signed T&C
+     */
+    function registerDriver(address _driver) public {
+        s_registeredDrivers[_driver] = true;
+    }
 
     function createPackage(
-        uint256 _paymentAmount,
-        string memory _addressA,
-        string memory _addressB,
-        string memory _notes,
-        bool _isEtherPayment,
-        IERC20 _token
-    ) public payable {
-        require(
-            _isEtherPayment || msg.value == 0,
-            "Ether sent for token payment"
-        );
-        require(
-            !_isEtherPayment || msg.value == _paymentAmount,
-            "Incorrect ether sent"
-        );
-
-        if (!_isEtherPayment) {
-            require(
-                _token.balanceOf(msg.sender) >= _paymentAmount,
-                "Insufficient token balance"
-            );
-            _token.transferFrom(msg.sender, address(this), _paymentAmount);
+        string memory _locationFrom,
+        string memory _locationTo,
+        string memory _notes
+    ) public payable returns (uint256) {
+        if (msg.value < s_minimumPayment) {
+            revert DeliveryContract__NotEnoughETHEntered();
         }
 
-        packages[packageId] = Package({
-            customer: msg.sender,
+        uint256 packageId = s_nextPackageId;
+        s_packagesMap[packageId] = Package({
+            requester: msg.sender,
             driver: address(0),
-            paymentAmount: _paymentAmount,
-            addressA: _addressA,
-            addressB: _addressB,
+            paymentAmount: msg.value,
+            locationFrom: _locationFrom,
+            locationTo: _locationTo,
             notes: _notes,
-            isDelivered: false,
-            isEtherPayment: _isEtherPayment,
-            token: _token
+            requesterSignedOff: false,
+            driverSignedOff: false
         });
+        s_nextPackageId++;
 
-        packageId++;
+        return (packageId);
     }
 
     function acceptPackage(uint256 _packageId) public {
-        Package storage p = packages[_packageId];
-        require(p.driver == address(0), "Package already accepted");
+        if (!s_registeredDrivers[msg.sender]) {
+            revert DeliveryContract__DriverNotRegistered();
+        }
 
-        p.driver = msg.sender;
+        Package storage package = s_packagesMap[_packageId];
+        if (package.driver != address(0)) {
+            revert DeliveryContract__PackageAlreadyAsigned();
+        }
+
+        package.driver = msg.sender;
     }
 
     function confirmDelivery(uint256 _packageId) public {
-        Package storage p = packages[_packageId];
-        require(
-            msg.sender == p.customer || msg.sender == p.driver,
-            "Only customer or driver can confirm delivery"
-        );
-        require(!p.isDelivered, "Package already delivered");
-
-        p.isDelivered = true;
-
-        if (p.isEtherPayment) {
-            payable(p.driver).transfer(p.paymentAmount);
-        } else {
-            p.token.transfer(p.driver, p.paymentAmount);
+        Package storage p = s_packagesMap[_packageId];
+        if (msg.sender != p.requester && msg.sender != p.driver) {
+            revert DeliveryContract__NotAllowedToSignOffPackage();
         }
+
+        if (p.requesterSignedOff && p.driverSignedOff) {
+            revert DeliveryContract__PackageAlreadyDelivered();
+        }
+
+        if (msg.sender == p.requester) {}
+
+        if (msg.sender == p.driver) {}
+
+        if (p.requesterSignedOff && p.driverSignedOff) {
+            (bool sent, ) = p.driver.call{value: p.paymentAmount}("");
+            require(sent, "Failed to send Ether");
+        }
+    }
+
+    /* view/pure functions */
+    function getMinimumPayment() public view returns (uint256) {
+        return s_minimumPayment;
+    }
+
+    function getNextPackageId() public view returns (uint256) {
+        return s_nextPackageId;
+    }
+
+    function isDriverRegistered(address _driver) public view returns (bool) {
+        return s_registeredDrivers[_driver];
+    }
+
+    function getPackage(
+        uint256 packageId
+    ) public view returns (Package memory) {
+        return s_packagesMap[packageId];
     }
 }
