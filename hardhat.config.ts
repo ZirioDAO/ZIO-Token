@@ -26,6 +26,7 @@ const config: HardhatUserConfig = {
     },
     arbitrumOne: {
       url: ARBITRUM_ONE_RPC,
+      chainId: 42161,
       accounts: [ARBITRUM_ONE_TEMPORARY_PRIVATE_KEY],
     },
   },

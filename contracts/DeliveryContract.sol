@@ -3,7 +3,8 @@ pragma solidity ^0.8.18;
 
 error DeliveryContract__NotEnoughETHEntered();
 error DeliveryContract__DriverNotRegistered();
-error DeliveryContract__PackageAlreadyAsigned();
+error DeliveryContract__PackageNotExist();
+error DeliveryContract__PackageAlreadyAssigned();
 error DeliveryContract__NotAllowedToSignOffPackage();
 error DeliveryContract__PackageAlreadyDelivered();
 
@@ -49,8 +50,8 @@ contract DeliveryContract {
     /**
      * register after driver signed T&C
      */
-    function registerDriver(address _driver) public {
-        s_registeredDrivers[_driver] = true;
+    function registerDriver() public {
+        s_registeredDrivers[msg.sender] = true;
     }
 
     function createPackage(
@@ -84,8 +85,12 @@ contract DeliveryContract {
         }
 
         Package storage package = s_packagesMap[_packageId];
+        if (package.requester == address(0)) {
+            revert DeliveryContract__PackageNotExist();
+        }
+
         if (package.driver != address(0)) {
-            revert DeliveryContract__PackageAlreadyAsigned();
+            revert DeliveryContract__PackageAlreadyAssigned();
         }
 
         package.driver = msg.sender;
@@ -93,6 +98,10 @@ contract DeliveryContract {
 
     function signOffDelivery(uint256 _packageId) public {
         Package storage package = s_packagesMap[_packageId];
+        if (package.requester == address(0)) {
+            revert DeliveryContract__PackageNotExist();
+        }
+
         if (msg.sender != package.requester && msg.sender != package.driver) {
             revert DeliveryContract__NotAllowedToSignOffPackage();
         }
