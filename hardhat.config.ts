@@ -40,7 +40,7 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: ETHERSCAN_API_KEY,
       arbitrumOne: ARBISCAN_API_KEY,
-      arbitrumGoerli: ARBISCAN_API_KEY,
+      arbitrumTestnet: ARBISCAN_API_KEY,
     },
   },
 };
