@@ -20,3 +20,6 @@ typechain-types
 # Hardhat files
 cache
 artifacts
+
+# macOS
+.DS_Store
